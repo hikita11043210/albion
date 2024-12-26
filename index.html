@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <title>ポイント計算システム</title>
+    <style>
+        .menu {
+            background-color: #333;
+            padding: 10px 0;
+            margin-bottom: 20px;
+        }
+
+        .menu a {
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        .menu a.active {
+            background-color: #4CAF50;
+        }
+
+        .system {
+            display: none;
+        }
+
+        .system.active {
+            display: block;
+        }
+
+        table {
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        thead tr {
+            position: sticky;
+            top: 0;
+            background-color: #f2f2f2;
+            z-index: 1;
+        }
+
+        th,
+        td {
+            border: 1px solid black;
+            padding: 8px;
+            text-align: right;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .input-group {
+            margin: 10px 0;
+        }
+
+        .result-container {
+            margin-top: 20px;
+            max-height: 800px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="menu">
+        <a href="#" id="menuSystem1" class="active">ポイント計算</a>
+        <a href="#" id="menuSystem2">勝率向上計算</a>
+    </div>
+
+    <div id="system1" class="system active">
+        <h1>ポイント計算システム</h1>
+
+        <div class="input-group">
+            <label>勝利ポイント: </label>
+            <input type="number" id="winPoints" value="8">
+        </div>
+
+        <div class="input-group">
+            <label>敗北ポイント: </label>
+            <input type="number" id="losePoints" value="-16">
+        </div>
+
+        <div class="input-group">
+            <label>目標ポイント差: </label>
+            <input type="number" id="targetPoints" value="500">
+        </div>
+
+        <div class="result-container">
+            <table id="resultTable">
+                <thead>
+                    <tr>
+                        <th>総試合数</th>
+                        <th>必要勝利数</th>
+                        <th>勝率</th>
+                    </tr>
+                </thead>
+                <tbody id="resultBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="system2" class="system">
+        <h1>勝率向上計算システム</h1>
+        <div class="input-group">
+            <label>総試合数: </label>
+            <input type="number" id="totalGamesInput" value="0" min="0">
+        </div>
+
+        <div class="input-group">
+            <label>勝利数: </label>
+            <input type="number" id="currentWins" value="0" min="0">
+        </div>
+
+        <div id="currentStats" class="stats-display">
+            <p>現在の総試合数: <span id="totalGames">0</span></p>
+            <p>現在の敗北数: <span id="currentLosses">0</span></p>
+            <p>現在の勝率: <span id="currentWinRate">0</span>%</p>
+            <p>目標勝率(+1%): <span id="targetWinRate">0</span>%</p>
+        </div>
+
+        <div class="result-container">
+            <table id="winRateTable">
+                <thead>
+                    <tr>
+                        <th>目標勝率</th>
+                        <th>必要勝利数</th>
+                    </tr>
+                </thead>
+                <tbody id="winRateBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('menuSystem1').addEventListener('click', function (e) {
+            e.preventDefault();
+            switchSystem('system1', this);
+        });
+
+        document.getElementById('menuSystem2').addEventListener('click', function (e) {
+            e.preventDefault();
+            switchSystem('system2', this);
+        });
+
+        function switchSystem(systemId, menuItem) {
+            document.querySelectorAll('.system').forEach(sys => sys.classList.remove('active'));
+            document.querySelectorAll('.menu a').forEach(item => item.classList.remove('active'));
+            document.getElementById(systemId).classList.add('active');
+            menuItem.classList.add('active');
+        }
+
+        function calculateWinRateImprovement() {
+            const totalGames = parseInt(document.getElementById('totalGamesInput').value) || 0;
+            const currentWins = parseInt(document.getElementById('currentWins').value) || 0;
+            const currentLosses = totalGames - currentWins;
+
+            if (currentWins > totalGames) {
+                document.getElementById('currentWins').value = totalGames;
+                return calculateWinRateImprovement();
+            }
+
+            const currentWinRate = totalGames > 0 ? (currentWins / totalGames * 100) : 0;
+            const startRate = Math.ceil(currentWinRate);
+            const targetWinRate = startRate + 5;
+
+            document.getElementById('totalGames').textContent = totalGames;
+            document.getElementById('currentLosses').textContent = currentLosses;
+            document.getElementById('currentWinRate').textContent = currentWinRate.toFixed(2);
+            document.getElementById('targetWinRate').textContent = startRate + "% ～ " + targetWinRate + "%";
+
+            const winRateBody = document.getElementById('winRateBody');
+            winRateBody.innerHTML = '';
+
+            for (let targetRate = startRate; targetRate <= startRate + 5; targetRate++) {
+                if (targetRate <= currentWinRate) continue;
+
+                let additionalWins = 0;
+                let newWinRate;
+                do {
+                    additionalWins++;
+                    newWinRate = ((currentWins + additionalWins) / (totalGames + additionalWins)) * 100;
+                } while (newWinRate < targetRate);
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${targetRate}%</td>
+                    <td>${additionalWins}</td>
+                `;
+                winRateBody.appendChild(row);
+            }
+        }
+
+        document.getElementById('totalGamesInput').addEventListener('input', calculateWinRateImprovement);
+        document.getElementById('currentWins').addEventListener('input', calculateWinRateImprovement);
+
+        function calculateResults() {
+            const winPoints = parseInt(document.getElementById('winPoints').value);
+            const losePoints = parseInt(document.getElementById('losePoints').value);
+            const targetPoints = parseInt(document.getElementById('targetPoints').value);
+            const resultBody = document.getElementById('resultBody');
+
+            resultBody.innerHTML = '';
+
+            for (let totalGames = 3000; totalGames >= 100; totalGames -= 100) {
+                const requiredWins = (targetPoints - losePoints * totalGames) / (winPoints - losePoints);
+
+                if (requiredWins >= 0 && requiredWins <= totalGames) {
+                    const winRate = (requiredWins / totalGames * 100).toFixed(2);
+
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${totalGames}</td>
+                        <td>${Math.ceil(requiredWins)}</td>
+                        <td>${winRate}%</td>
+                    `;
+                    resultBody.appendChild(row);
+                }
+            }
+        }
+
+        document.getElementById('losePoints').addEventListener('input', function (e) {
+            const value = parseInt(e.target.value);
+            if (value > 0) {
+                e.target.value = -value;
+            } else if (value === 0) {
+                e.target.value = 0;
+            }
+            calculateResults();
+        });
+
+        document.getElementById('winPoints').addEventListener('input', calculateResults);
+        document.getElementById('targetPoints').addEventListener('input', calculateResults);
+
+        window.onload = calculateResults;
+    </script>
+</body>
+
+</html>
